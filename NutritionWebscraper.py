@@ -1,40 +1,115 @@
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import requests
-import bs4
-from bs4 import BeautifulSoup
-
-def main():
-    food_name = input("Enter the name of the food you want the nutritional facts for: ")
-    nutrition_data = collect_nutrition_data(food_name)
-    if(nutrition_data):
-        print(f"Nutrition data for {food_name}:")
-        print(f"Calories: {nutrition_data}")
-    else:
-        print("No nutrition data found")
-
 
 
 def collect_nutrition_data(food_name):
-    query = f"{food_name} nutrients"
+    # Initialize variables
+    calories_value = "Calories not found"
+    total_fat_value = "Total fat not found"
+    total_protein_value = "Total protein not found"
+    total_carbohydrates_value = "Total carbohydrates not found"
 
-    url = f"https://www.google.com/search?q={query}"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"}
-    # response = requests.get(url, headers=headers)
-    soup = BeautifulSoup(requests.get(url).text)
+    # Configure Chrome options
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--headless')  # Optional: run Chrome in headless mode
 
-    # if(response.status_code == 200):
-    #     soup = BeautifulSoup(response.text, 'html.parser')
-    #     parent_div = soup.find_all("span", class_="abs")
-    #     target_element = parent_div.find("span", class_="abs")
-    #     calories = target_element.text
-    #     return calories
-    # else:
-    #     print("Failed to fetch data from Google")
-    #     return None
+    # Initialize Chrome WebDriver with the provided options
+    driver = webdriver.Chrome(options=chrome_options)
 
-    # result = bs4.BeautifulSoup(response.text, "html.parser")
-    variable_name = soup.find('table', class_='AYBNrd')
-    for x in variable_name:
-        print(x)
-   
+    # Open the webpage
+    driver.get(f"https://www.nutritionix.com/food/{food_name}")
+
+    try:
+        # Wait for the calories element to be present on the page
+        calories_element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, '.nf-pr[itemprop="calories"]'))
+        )
+
+        # Extract the caloric value
+        calories_text = calories_element.text.strip()
+        calories_value = calories_text.split()[0]
+    except Exception as e:
+        print("An error occurred while fetching calories:", e)
+    
+    try:
+        # Wait for the total fat element to be present on the page
+        total_fat_element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, '//span[contains(text(), "Total Fat")]/following-sibling::span'))
+        )
+
+        # Extract the total fat value
+        total_fat_text = total_fat_element.text.strip()
+        total_fat_value = total_fat_text.split()[0]
+    except Exception as e:
+        print("An error occurred while fetching total fat:", e)
+    
+    try:
+        # Wait for the total protein element to be present on the page
+        total_protein_element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, '//span[contains(text(), "Protein")]/following-sibling::span'))
+        )
+
+        # Extract the total protein value
+        total_protein_text = total_protein_element.text.strip()
+        total_protein_value = total_protein_text.split()[0]
+    except Exception as e:
+        print("An error occurred while fetching total protein:", e)
+
+    try:
+        # Wait for the total carbohydrates element to be present on the page
+        total_carbohydrates_element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, '//span[contains(text(), "Total Carbohydrates")]/following-sibling::span'))
+        )
+
+        # Extract the total carbohydrates value
+        total_carbohydrates_text = total_carbohydrates_element.text.strip()
+        total_carbohydrates_value = total_carbohydrates_text.split()[0]
+    except Exception as e:
+        print("An error occurred while fetching total carbohydrates:", e)
+    
+    nutrition_data = {
+        "Calories": calories_value,
+        "Total Fat": total_fat_value,
+        "Total Protein": total_protein_value,
+        "Total Carbohydrates": total_carbohydrates_value,
+    }
+
+    return nutrition_data
+
+def main():
+    image_path = input("Enter the image path: ")
+
+    url = "https://r6znkgc19l.execute-api.us-east-1.amazonaws.com/classify"
+
+    payload = {
+        "image_path": image_path
+    }
+
+    headers = {
+        'Content-Type': 'application/json'
+    }
+
+    response = requests.put(url, json=payload, headers=headers)
+
+    if response.status_code == 200:
+        # Pass the response content to the collect_nutrition_data function
+        nutrition_data = collect_nutrition_data(response.content)
+        
+        # Print the retrieved nutrition data
+        print("Nutritional data:", nutrition_data)
+    else:
+        print("Failed to retrieve image from S3 bucket")
+
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+
